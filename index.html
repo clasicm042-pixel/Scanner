@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escáner de productos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mute:#5b6b7a;--line:#d3dae1;--accent:#1f5fd1;--accent-ink:#fff;--bad:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10171e;--card:#18222c;--ink:#e8eef4;--mute:#93a3b2;--line:#2b3947;--accent:#6ea2ff;--accent-ink:#0b1420;--bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10171e;--card:#18222c;--ink:#e8eef4;--mute:#93a3b2;--line:#2b3947;--accent:#6ea2ff;--accent-ink:#0b1420;--bad:#ff8a80;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+button{font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:11px 14px;cursor:pointer}
+button.main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 auto}
+#reader{width:100%;border-radius:10px;overflow:hidden;margin-top:10px}
+#reader:empty{display:none}
+input[type=text],input[type=tel]{width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+.code{font:500 26px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;word-break:break-all}
+.msg{margin:8px 0 0;color:var(--mute);font-size:14px;min-height:20px}
+.msg.err{color:var(--bad)}
+.item{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start}
+.item:first-child{border-top:0}
+.item .info{flex:1;min-width:0}
+.item .num{font:500 15px "IBM Plex Mono",ui-monospace,monospace;word-break:break-all}
+.item .name{font-weight:600}
+.item .meta{color:var(--mute);font-size:13px}
+.item button{padding:6px 10px;flex:none}
+.empty{color:var(--mute);margin:0}
+.item .q{font:500 22px "IBM Plex Mono",ui-monospace,monospace;flex:none;min-width:56px}
+h2{font-size:18px;margin:0 0 6px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg label{display:flex;gap:8px;align-items:center;margin:0;color:var(--ink);font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;flex:1 1 140px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>Escáner de productos</h1>
+<p class="sub">Escanea un código de barras y guarda su marca, nombre y número.</p>
+
+<section class="card">
+  <label for="tag" style="margin-top:0">Marbete actual</label>
+  <input type="text" id="tag" placeholder="Ej. Caja 12 o Tarima 1" autocomplete="off">
+  <p class="msg">Todo lo que escanees se guarda en este marbete. Cámbialo cuando pases a otra caja o tarima.</p>
+  <button class="main" id="btn-finish" style="width:100%;margin-top:6px">Terminar marbete</button>
+</section>
+
+<section class="card" id="scan-card">
+  <div class="row">
+    <button class="main" id="btn-scan">Abrir cámara</button>
+    <button id="btn-photo">Tomar foto del código</button>
+  </div>
+  <div id="reader"></div>
+  <div id="tmp" hidden></div>
+  <input type="file" id="file-code" accept="image/*" capture="environment" hidden>
+  <label for="manual">¿Prefieres escribirlo?</label>
+  <div class="row">
+    <input type="tel" id="manual" inputmode="numeric" placeholder="Ej. 7501483198763" autocomplete="off">
+    <button id="btn-manual" style="flex:0 0 auto">Usar número</button>
+  </div>
+  <p class="msg" id="scan-msg"></p>
+</section>
+
+<section class="card" id="result" hidden>
+  <div class="code" id="res-code"></div>
+  <p class="msg" id="res-origin"></p>
+  <label for="brand">Marca</label>
+  <input type="text" id="brand" autocomplete="off">
+  <label for="name">Nombre del producto</label>
+  <input type="text" id="name" autocomplete="off">
+  <div class="row" style="margin-top:12px">
+    <button id="btn-id">Llenar con foto del producto (opcional)</button>
+    <input type="file" id="file-prod" accept="image/*" capture="environment" hidden>
+  </div>
+  <label>¿Cómo lo registras?</label>
+  <div class="seg" role="radiogroup">
+    <label><input type="radio" name="mode" value="unit" checked> Unitario (1 pieza)</label>
+    <label><input type="radio" name="mode" value="qty"> Cantidad</label>
+  </div>
+  <div id="qty-box" hidden>
+    <label for="qty">Cuántos hay</label>
+    <input type="tel" id="qty" inputmode="numeric" value="1">
+  </div>
+  <p class="msg" id="res-msg"></p>
+  <div class="row" style="margin-top:6px">
+    <button class="main" id="btn-save">Guardar en la lista</button>
+    <button id="btn-cancel">Cancelar</button>
+  </div>
+</section>
+
+<section class="card" id="summary" hidden>
+  <h2 id="sum-title"></h2>
+  <p class="msg" id="sum-total"></p>
+  <div id="sum-list"></div>
+  <div class="row" style="margin-top:12px">
+    <button id="btn-copy">Copiar resumen</button>
+    <button class="main" id="btn-new">Nuevo marbete</button>
+  </div>
+  <p class="msg" id="sum-msg"></p>
+</section>
+
+<section class="card">
+  <h2>Productos guardados</h2>
+  <div id="list"></div>
+  <button id="btn-csv" hidden style="width:100%;margin-top:10px">Guardar copia en el celular</button>
+  <p class="msg" id="csv-msg"></p>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const KEY = 'productos-escaneados';
+let items = [];
+try { items = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { items = []; }
+let scanner = null, sampleFn = null, current = null;
+const $ = id => document.getElementById(id);
+const currentTag = () => $('tag').value.trim();
+function mode() { return document.querySelector('input[name=mode]:checked').value; }
+function setMode(m) {
+  document.querySelector('input[name=mode][value=' + m + ']').checked = true;
+  $('qty-box').hidden = m !== 'qty';
+  if (m === 'qty') $('qty').value = '1';
+}
+
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} }
+function say(el, text, err) { el.textContent = text || ''; el.className = 'msg' + (err ? ' err' : ''); }
+
+function render() {
+  const box = $('list');
+  box.textContent = '';
+  if (!items.length) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'Aún no hay productos. Escanea el primero.';
+    box.appendChild(p);
+    return;
+  }
+  items.forEach((it, i) => {
+    const row = document.createElement('div'); row.className = 'item';
+    const info = document.createElement('div'); info.className = 'info';
+    const num = document.createElement('div'); num.className = 'num'; num.textContent = it.code;
+    const nm = document.createElement('div'); nm.className = 'name';
+    nm.textContent = [it.brand, it.name].filter(Boolean).join(' · ') || 'Sin nombre';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = (it.tag || 'Sin marbete') + ', cantidad ' + (it.qty || 1) + ', ' + new Date(it.date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    info.append(nm, num, meta);
+    const del = document.createElement('button'); del.textContent = 'Borrar';
+    del.setAttribute('aria-label', 'Borrar ' + it.code);
+    del.onclick = () => { items.splice(i, 1); persist(); render(); };
+    row.append(info, del);
+    box.appendChild(row);
+  });
+}
+
+async function stopCamera() {
+  if (scanner) {
+    try { await scanner.stop(); } catch (e) {}
+    try { scanner.clear(); } catch (e) {}
+    scanner = null;
+  }
+  $('btn-scan').textContent = 'Abrir cámara';
+}
+
+function showResult(code) {
+  current = code;
+  const saved = items.find(x => x.code === code);
+  const here = items.find(x => x.code === code && (x.tag || '') === currentTag());
+  $('res-code').textContent = code;
+  $('brand').value = saved ? saved.brand : '';
+  $('name').value = saved ? saved.name : '';
+  say($('res-origin'), here ? 'Ya hay ' + (here.qty || 1) + ' en ' + (here.tag || 'este marbete') + '. Lo que guardes se suma.' : (saved ? 'Este producto ya estaba guardado en otro marbete.' : ''));
+  setMode('unit');
+  if (!saved) $('brand').focus();
+  say($('res-msg'), '');
+  $('result').hidden = false;
+  $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function startCamera() {
+  if (scanner) { await stopCamera(); return; }
+  say($('scan-msg'), '');
+  if (typeof Html5Qrcode === 'undefined') { say($('scan-msg'), 'No cargó el lector. Usa la foto o escribe el número.', true); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    say($('scan-msg'), 'Esta pantalla no deja usar la cámara. Usa "Tomar foto del código".', true);
+    return;
+  }
+  say($('scan-msg'), 'Pidiendo permiso para la cámara…');
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    st.getTracks().forEach(t => t.stop());
+    say($('scan-msg'), '');
+  } catch (e) {
+    const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+    say($('scan-msg'), denied
+      ? 'No hay permiso para la cámara. Actívalo en los ajustes del celular y vuelve a intentar, o usa "Tomar foto del código".'
+      : 'No pude abrir la cámara. Usa "Tomar foto del código" o escribe el número.', true);
+    return;
+  }
+  const F = Html5QrcodeSupportedFormats;
+  scanner = new Html5Qrcode('reader', { formatsToSupport: [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128], verbose: false });
+  try {
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 140 } },
+      async code => { await stopCamera(); showResult(code); }, () => {});
+    $('btn-scan').textContent = 'Cerrar cámara';
+  } catch (e) {
+    scanner = null;
+    say($('scan-msg'), 'No pude abrir la cámara. Revisa el permiso, o usa la foto o el número.', true);
+  }
+}
+
+async function scanFromPhoto(file) {
+  if (!file) return;
+  say($('scan-msg'), 'Leyendo la foto…');
+  try {
+    const s = new Html5Qrcode('tmp');
+    const code = await s.scanFile(file, false);
+    say($('scan-msg'), '');
+    showResult(code);
+  } catch (e) {
+    say($('scan-msg'), 'No encontré un código en esa foto. Acércate y que se vea completo.', true);
+  }
+}
+
+function shrink(file, max) {
+  return new Promise((ok, fail) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? ok(b) : fail(new Error('blob')), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => fail(new Error('img'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function identify(file) {
+  if (!file || !sampleFn) return;
+  const btn = $('btn-id');
+  btn.disabled = true;
+  say($('res-msg'), 'Leyendo la foto del producto…');
+  try {
+    const blob = await shrink(file, 1024);
+    const r = await sampleFn.json(
+      'Mira la foto de este producto de tienda. Responde solo con JSON, sin texto extra: {"marca":"...","nombre":"..."}. ' +
+      '"nombre" es el nombre del producto con su presentación si se ve (por ejemplo "Leche entera 1 L"), sin repetir la marca. ' +
+      'Si no puedes leer un dato, déjalo como cadena vacía.',
+      { images: [blob], modelTier: 'quick' });
+    if (r && r.marca) $('brand').value = r.marca;
+    if (r && r.nombre) $('name').value = r.nombre;
+    say($('res-msg'), 'Listo. Revisa que esté bien antes de guardar.');
+  } catch (e) {
+    say($('res-msg'), 'No pude identificarlo. Escribe la marca y el nombre a mano.', true);
+  }
+  btn.disabled = false;
+}
+
+$('btn-scan').onclick = startCamera;
+$('btn-photo').onclick = () => $('file-code').click();
+$('file-code').onchange = e => { scanFromPhoto(e.target.files[0]); e.target.value = ''; };
+$('btn-manual').onclick = () => {
+  const v = $('manual').value.replace(/\D/g, '');
+  if (v.length < 8) { say($('scan-msg'), 'El número debe tener al menos 8 dígitos.', true); return; }
+  say($('scan-msg'), ''); showResult(v); $('manual').value = '';
+};
+$('btn-id').onclick = () => $('file-prod').click();
+$('file-prod').onchange = e => { identify(e.target.files[0]); e.target.value = ''; };
+$('btn-cancel').onclick = () => { $('result').hidden = true; current = null; };
+$('btn-save').onclick = () => {
+  if (!current) return;
+  const tag = currentTag();
+  const add = mode() === 'qty' ? Math.max(1, parseInt($('qty').value, 10) || 1) : 1;
+  const i = items.findIndex(x => x.code === current && (x.tag || '') === tag);
+  const prev = i >= 0 ? (items.splice(i, 1)[0].qty || 1) : 0;
+  items.unshift({ code: current, brand: $('brand').value.trim(), name: $('name').value.trim(), tag, qty: prev + add, date: Date.now() });
+  persist(); render();
+  $('result').hidden = true; current = null;
+  $('summary').hidden = true;
+  say($('scan-msg'), 'Guardado en ' + (tag || 'la lista') + '. Escanea otro cuando quieras.');
+};
+
+let summaryText = '';
+function finishTag() {
+  const tag = currentTag();
+  const list = items.filter(x => (x.tag || '') === tag);
+  const box = $('sum-list');
+  box.textContent = '';
+  say($('sum-msg'), '');
+  $('result').hidden = true; current = null;
+  $('summary').hidden = false;
+  $('sum-title').textContent = 'Resumen de ' + (tag || 'la lista sin marbete');
+  if (!list.length) {
+    say($('sum-total'), 'Este marbete aún no tiene productos.');
+    summaryText = '';
+  } else {
+    const pieces = list.reduce((s, x) => s + (x.qty || 1), 0);
+    say($('sum-total'), list.length + ' códigos distintos y ' + pieces + ' piezas en total.');
+    const lines = [tag || 'Sin marbete'];
+    list.forEach(it => {
+      const q = it.qty || 1;
+      const label = [it.brand, it.name].filter(Boolean).join(' ') || 'Sin nombre';
+      const row = document.createElement('div'); row.className = 'item';
+      const qEl = document.createElement('div'); qEl.className = 'q'; qEl.textContent = q + '×';
+      const info = document.createElement('div'); info.className = 'info';
+      const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = label;
+      const num = document.createElement('div'); num.className = 'num'; num.textContent = it.code;
+      info.append(nm, num); row.append(qEl, info); box.appendChild(row);
+      lines.push(q + ' x ' + label + ' (' + it.code + ')');
+    });
+    lines.push('Total: ' + pieces + ' piezas');
+    summaryText = lines.join('\n');
+  }
+  $('summary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('btn-finish').onclick = finishTag;
+$('btn-copy').onclick = async () => {
+  if (!summaryText) { say($('sum-msg'), 'No hay nada que copiar.', true); return; }
+  try { await navigator.clipboard.writeText(summaryText); say($('sum-msg'), 'Resumen copiado.'); }
+  catch (e) { say($('sum-msg'), 'No pude copiar desde aquí. Toma una captura de pantalla.', true); }
+};
+$('btn-new').onclick = () => {
+  $('tag').value = '';
+  try { localStorage.setItem('marbete-actual', ''); } catch (e) {}
+  $('summary').hidden = true;
+  say($('scan-msg'), 'Escribe el nuevo marbete y empieza a escanear.');
+  $('tag').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('tag').focus();
+};
+document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = () => setMode(mode()));
+try { $('tag').value = localStorage.getItem('marbete-actual') || ''; } catch (e) {}
+$('tag').oninput = () => { $('summary').hidden = true; try { localStorage.setItem('marbete-actual', $('tag').value); } catch (e) {} };
+render();
+$('btn-id').hidden = true;
+(async () => {
+  try {
+    if (window.claude && claude.use) {
+      const s = await claude.use('sample');
+      if (s) {
+        let ok = true;
+        try { ok = (await s.limits()).images !== false; } catch (e) {}
+        if (ok) { sampleFn = s; $('btn-id').hidden = false; }
+      }
+    }
+  } catch (e) {}
+})();
+(async () => {
+  try {
+    if (window.claude && claude.use) {
+      const d = await claude.use('downloads');
+      if (d) {
+        $('btn-csv').hidden = false;
+        $('btn-csv').onclick = async () => {
+          if (!items.length) { say($('csv-msg'), 'Aún no hay nada que guardar.', true); return; }
+          const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+          const rows = [['marbete', 'codigo', 'marca', 'nombre', 'cantidad', 'fecha']].concat(
+            items.map(it => [it.tag || '', it.code, it.brand, it.name, it.qty || 1, new Date(it.date).toISOString()]));
+          const csv = '\ufeff' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+          try { await d.save({ filename: 'productos.csv', data: csv }); say($('csv-msg'), 'Archivo guardado.'); }
+          catch (e) { say($('csv-msg'), e && e.code === 'declined' ? 'Cancelaste el guardado.' : 'No se pudo guardar el archivo.', true); }
+        };
+      }
+    }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
